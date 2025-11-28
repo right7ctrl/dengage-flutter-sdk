@@ -131,12 +131,12 @@ class DengageFlutterPlugin : FlutterPlugin, MethodCallHandler, DengageResponder(
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         appActivity = binding.activity
         flutterPluginBindingGlobal.platformViewRegistry.registerViewFactory(
-            "plugins.dengage/inappinline",InAppInlineFactory(appActivity))
+            "plugins.dengage/inappinline",InAppInlineFactory(appActivity, flutterPluginBindingGlobal.binaryMessenger))
     }
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
         appActivity = binding.activity
         flutterPluginBindingGlobal.platformViewRegistry.registerViewFactory(
-            "plugins.dengage/inappinline",InAppInlineFactory(appActivity))
+            "plugins.dengage/inappinline",InAppInlineFactory(appActivity, flutterPluginBindingGlobal.binaryMessenger))
     }
 
 
