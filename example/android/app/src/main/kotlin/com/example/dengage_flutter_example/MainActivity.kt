@@ -3,7 +3,8 @@ package com.example.dengage_flutter_example
 import android.os.Bundle
 import com.example.dengage_flutter.DengageCoordinator
 import io.flutter.embedding.android.FlutterFragmentActivity
-
+//import com.dengage.sdk.util.DengageLifecycleTracker
+//import android.app.Application
 class MainActivity : FlutterFragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -14,5 +15,7 @@ class MainActivity : FlutterFragmentActivity() {
             false,
             applicationContext
         )
+
+        //registerActivityLifecycleCallbacks(DengageLifecycleTracker())
     }
 }
