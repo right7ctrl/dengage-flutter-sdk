@@ -202,17 +202,36 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Text('Send Device Event'),
               ),
             ),
-            SizedBox(
-              height: 100,
-              child: Container(
-                padding: EdgeInsets.only(top: 10.0),
-                child: InAppInline(
-                  propertyId: "2233",
-                  screenName: "test",
-                  hideIfNotFound: false,
-                  customParams: hashMap,
+            Container(
+              padding: EdgeInsets.only(top: 10.0),
+              child: InAppInline(
+                propertyId: "home_banner",
+                screenName: "MerchantStatusRoute",
+                timeout: Duration(seconds: 15),
+                builder: (status, inlineContent) {
 
-                ),),
+                  if(status.isLoading){
+                    return CircularProgressIndicator();
+                  }
+
+                  if (status.isNotFound){
+                    return SizedBox.shrink();
+                  }
+
+                  if (status.isError){
+                    return Text('Error: ${status.errorMessage}');
+                  }
+                  
+                  print('URL: ${status.webViewInfo?.url}');
+                  print('Title: ${status.webViewInfo?.title}');
+                  print('Content Height: ${status.webViewInfo?.contentHeight}');
+                  return SizedBox(
+                    child: inlineContent,
+                    height: 140,
+                    width: 200,
+                  );
+                },
+              ),
             ),
             Container(
               padding: EdgeInsets.only(top: 10.0),
