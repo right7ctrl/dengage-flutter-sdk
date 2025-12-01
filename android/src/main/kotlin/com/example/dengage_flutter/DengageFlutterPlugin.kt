@@ -130,13 +130,17 @@ class DengageFlutterPlugin : FlutterPlugin, MethodCallHandler, DengageResponder(
     }
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         appActivity = binding.activity
+        Log.e("DengageFlutterPlugin", "========== REGISTERING InAppInline Factory ==========")
         flutterPluginBindingGlobal.platformViewRegistry.registerViewFactory(
             "plugins.dengage/inappinline",InAppInlineFactory(appActivity, flutterPluginBindingGlobal.binaryMessenger))
+        Log.e("DengageFlutterPlugin", "========== InAppInline Factory REGISTERED ==========")
     }
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
         appActivity = binding.activity
+        Log.e("DengageFlutterPlugin", "========== RE-REGISTERING InAppInline Factory ==========")
         flutterPluginBindingGlobal.platformViewRegistry.registerViewFactory(
             "plugins.dengage/inappinline",InAppInlineFactory(appActivity, flutterPluginBindingGlobal.binaryMessenger))
+        Log.e("DengageFlutterPlugin", "========== InAppInline Factory RE-REGISTERED ==========")
     }
 
 

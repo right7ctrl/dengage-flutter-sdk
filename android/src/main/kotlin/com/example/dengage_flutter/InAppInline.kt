@@ -71,6 +71,7 @@ class InAppInline internal constructor(
         Log.d(TAG, "  - screenName: $screenName")
         Log.d(TAG, "  - customParams: $customParams")
         
+        // ÖNCE Dengage SDK'yı çağır
         Dengage.showInlineInApp(
             activity = activity,
             propertyId = propertyId,
@@ -80,6 +81,7 @@ class InAppInline internal constructor(
         )
         Log.d(TAG, "Dengage.showInlineInApp called")
         
+        // SONRA WebViewClient ve WebChromeClient'ı set et
         mainHandler.postDelayed({
             setupWebViewClient()
             setupWebChromeClient()
@@ -87,7 +89,14 @@ class InAppInline internal constructor(
             isInitialized = true
             Log.d(TAG, "Initialization completed (delayed)")
             
+            // WebView durumunu logla
             logWebViewState()
+            
+            // Eğer sayfa zaten yüklenmişse (progress 100%) direkt işle
+            if (inAppInlineElement.progress == 100) {
+                Log.d(TAG, "Page already loaded (progress 100%), checking content...")
+                checkContentAndNotify()
+            }
         }, 100)
         
         Log.d(TAG, "========== InAppInline INIT END ==========")
@@ -135,6 +144,7 @@ class InAppInline internal constructor(
     private fun setupWebViewClient() {
         Log.d(TAG, "Setting up WebViewClient")
         
+        // Mevcut WebViewClient'ı al ve wrap et
         val existingClient = inAppInlineElement.webViewClient
         Log.d(TAG, "Existing WebViewClient: $existingClient")
         
@@ -144,6 +154,7 @@ class InAppInline internal constructor(
                 Log.d(TAG, ">>> onPageStarted - URL: $url")
                 Log.d(TAG, ">>> onPageStarted - isContentLoaded: $isContentLoaded, isNotFoundNotified: $isNotFoundNotified")
                 
+                // Sayfa yüklenmeye başladı, notFound'u iptal et
                 cancelNotFoundCheck()
             }
 
@@ -157,6 +168,7 @@ class InAppInline internal constructor(
                     val currentUrl = view.url
                     Log.d(TAG, ">>> onPageFinished - currentUrl: $currentUrl")
                     
+                    // HTML içeriğini kontrol et - body boş mu?
                     view.evaluateJavascript(
                         "(function() { return document.body ? document.body.innerHTML.trim().length : 0; })()"
                     ) { result ->
@@ -164,6 +176,7 @@ class InAppInline internal constructor(
                         Log.d(TAG, ">>> onPageFinished - Body content length: $contentLength")
                         
                         if (contentLength > 0) {
+                            // İçerik var!
                             Log.d(TAG, ">>> onPageFinished - Content found! Setting isContentLoaded = true")
                             
                             if (!isContentLoaded && !isNotFoundNotified) {
@@ -180,6 +193,7 @@ class InAppInline internal constructor(
                                 collectWebViewInfoAndNotify(view)
                             }
                         } else {
+                            // İçerik yok
                             Log.d(TAG, ">>> onPageFinished - No content, scheduling notFound check")
                             scheduleNotFoundCheck(1000)
                         }
@@ -306,12 +320,16 @@ class InAppInline internal constructor(
             val width = inAppInlineElement.width
             val height = inAppInlineElement.height
             
+            // Her layout değişikliğini loglamak yerine sadece önemli olanları logla
             if (layoutChangeCount <= 5 || layoutChangeCount % 10 == 0) {
                 Log.d(TAG, ">>> onGlobalLayout #$layoutChangeCount - visibility: $visibilityStr, width: $width, height: $height")
                 Log.d(TAG, ">>> onGlobalLayout - isContentLoaded: $isContentLoaded, isNotFoundNotified: $isNotFoundNotified")
             }
+            
+            // İçerik zaten yüklendiyse veya bildirilmişse kontrol etme
             if (isContentLoaded || isNotFoundNotified) return@OnGlobalLayoutListener
             
+            // View GONE yapıldıysa (SDK tarafından) bu içerik bulunamadı demektir
             if (visibility == View.GONE) {
                 Log.d(TAG, ">>> onGlobalLayout - View is GONE, scheduling notFound check")
                 scheduleNotFoundCheck(500)
@@ -322,7 +340,7 @@ class InAppInline internal constructor(
     }
 
     private fun scheduleNotFoundCheck(delayMs: Long) {
-
+        // Önceki check'i iptal et
         cancelNotFoundCheck()
         
         Log.d(TAG, "Scheduling notFound check in ${delayMs}ms")
@@ -334,7 +352,7 @@ class InAppInline internal constructor(
                 
                 Log.d(TAG, ">>> notFound check - visibility: $visibility, width: $width, height: $height")
                 
-
+                // GONE durumu kesin olarak içerik yok demektir
                 if (visibility == View.GONE) {
                     notifyContentNotFound()
                 }
@@ -408,6 +426,35 @@ class InAppInline internal constructor(
                         Log.e(TAG, "Error invoking onContentLoaded: ${e.message}")
                     }
                 }
+            }
+        }
+    }
+
+    private fun checkContentAndNotify() {
+        // HTML içeriğini kontrol et
+        inAppInlineElement.evaluateJavascript(
+            "(function() { return document.body ? document.body.innerHTML.trim().length : 0; })()"
+        ) { result ->
+            val contentLength = result?.replace("\"", "")?.toIntOrNull() ?: 0
+            Log.d(TAG, "checkContentAndNotify - Body content length: $contentLength")
+            
+            if (contentLength > 0 && !isContentLoaded && !isNotFoundNotified) {
+                // İçerik var!
+                Log.d(TAG, "checkContentAndNotify - Content found! Setting isContentLoaded = true")
+                isContentLoaded = true
+                cancelNotFoundCheck()
+                
+                inAppInlineElement.visibility = View.VISIBLE
+                inAppInlineElement.animate()
+                    .alpha(1f)
+                    .setDuration(150)
+                    .start()
+                Log.d(TAG, "checkContentAndNotify - View made VISIBLE with animation")
+                
+                collectWebViewInfoAndNotify(inAppInlineElement)
+            } else if (contentLength == 0) {
+                Log.d(TAG, "checkContentAndNotify - No content found, scheduling notFound check")
+                scheduleNotFoundCheck(1000)
             }
         }
     }
