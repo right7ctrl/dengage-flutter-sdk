@@ -180,7 +180,10 @@ class InAppinline: NSObject, FlutterPlatformView {
                 }
                 print("\(TAG) View made VISIBLE with animation")
                 
-                self.collectWebViewInfoAndNotify(webView: webView)
+                // Wait a bit for layout to complete before collecting dimensions
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                    self?.collectWebViewInfoAndNotify(webView: webView)
+                }
             } else if contentLength == 0 && retryCount < 5 {
                 // No content yet, retry (max 5 times)
                 let delay = 0.5 + Double(retryCount) * 0.2 // Increasing delay: 0.5s, 0.7s, 0.9s, 1.1s, 1.3s
@@ -428,47 +431,30 @@ class InAppinline: NSObject, FlutterPlatformView {
         print("\(TAG) collectWebViewInfoAndNotify - Starting")
         print("\(TAG) WebView URL: \(webView.url?.absoluteString ?? "nil")")
         print("\(TAG) WebView Title: \(webView.title ?? "nil")")
+        print("\(TAG) WebView frame: \(webView.frame)")
+        print("\(TAG) Native view frame: \(_nativeWebView.frame)")
         
-        let script = """
-            (function() {
-                return {
-                    height: document.body.scrollHeight,
-                    width: document.body.scrollWidth
-                };
-            })();
-        """
+        // Use native view dimensions (more reliable than JavaScript for Dengage content)
+        let nativeFrame = _nativeWebView.frame
+        let contentHeight = Double(nativeFrame.height)
+        let contentWidth = Double(nativeFrame.width)
         
-        webView.evaluateJavaScript(script) { [weak self] result, error in
-            guard let self = self else { return }
-            
-            print("\(TAG) JavaScript result: \(String(describing: result))")
-            if let error = error {
-                print("\(TAG) JavaScript error: \(error.localizedDescription)")
-            }
-            
-            var contentHeight: Double? = nil
-            var contentWidth: Double? = nil
-            
-            if let dimensions = result as? [String: Any] {
-                contentHeight = dimensions["height"] as? Double
-                contentWidth = dimensions["width"] as? Double
-            }
-            
-            let webViewInfo: [String: Any?] = [
-                "url": webView.url?.absoluteString,
-                "title": webView.title,
-                "contentHeight": contentHeight,
-                "contentWidth": contentWidth,
-                "canGoBack": webView.canGoBack,
-                "canGoForward": webView.canGoForward
-            ]
-            
-            print("\(TAG) ========== CONTENT LOADED ==========")
-            print("\(TAG) WebView info: \(webViewInfo)")
-            
-            self.methodChannel.invokeMethod("onContentLoaded", arguments: webViewInfo)
-            print("\(TAG) onContentLoaded sent to Flutter")
-        }
+        print("\(TAG) Using native dimensions - \(contentWidth) x \(contentHeight)")
+        
+        let webViewInfo: [String: Any?] = [
+            "url": webView.url?.absoluteString,
+            "title": webView.title,
+            "contentHeight": contentHeight,
+            "contentWidth": contentWidth,
+            "canGoBack": webView.canGoBack,
+            "canGoForward": webView.canGoForward
+        ]
+        
+        print("\(TAG) ========== CONTENT LOADED ==========")
+        print("\(TAG) WebView info: \(webViewInfo)")
+        
+        self.methodChannel.invokeMethod("onContentLoaded", arguments: webViewInfo)
+        print("\(TAG) onContentLoaded sent to Flutter")
     }
     
     private func notifyContentError(error: Error?) {
