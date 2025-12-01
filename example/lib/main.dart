@@ -8,9 +8,8 @@ import 'package:flutter/services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  //  DengageFlutter.setFirebaseIntegrationKey(
-  //      'FEYl27JxJfay6TxiYCdlkP2FXeuhNfEoI8WkxI_p_l__s_l_5sLbzKmc9c88mSZxRCrLuqMK4y0e8nHajQnBt8poBNDMvNtIytYKZ6byBQZOE8kqkkgDnlye2Lb5AcW3tuIWQjYz');
-  // DengageFlutter.setLogStatus(true);
+  
+  DengageFlutter.setLogStatus(true);
 
   runApp(
     MyApp(),
@@ -71,9 +70,13 @@ class _MyHomePageState extends State<MyHomePage> {
       //contactKeyChanged(value);
     });
 
-
+    DengageFlutter.pageView({
+      "page_type": "MerchantStatusRoute",
+      "page_url": "MerchantStatusRoute",
+      "page_title": "MerchantStatusRoute"
+    });
     eventChannel2.receiveBroadcastStream().listen(_onEvent, onError: _onError);
-    hashMap["priya"]="priya";
+    hashMap["priya"] = "priya";
     super.initState();
   }
 
@@ -134,105 +137,104 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Container(
               padding: EdgeInsets.only(top: 10.0),
-              child: ElevatedButton(
-                onPressed: () {
-                  String msg = contactKey;
-                  DengageFlutter.setContactKey(contactKey);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(msg),
-                      action: SnackBarAction(
-                        label: 'Ok',
-                        onPressed: () {},
-                      ),
-                    ),
-                  );
-                },
-                child: Text('Set Contact Key'),
-              ),
-            ),
-            Container(
-              padding: EdgeInsets.only(top: 10.0),
-              child: ElevatedButton(
-                onPressed: () async {
-                  await DengageFlutter.setLogStatus(false);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("msg".toString()),
-                      action: SnackBarAction(
-                        label: 'Ok',
-                        onPressed: () {},
-                      ),
-                    ),
-                  );
-                },
-                child: Text('Get & Show Contact Key'),
-              ),
-            ),
-            Container(
-              padding: EdgeInsets.only(top: 10.0),
-              child: ElevatedButton(
-                onPressed: () async {
-                  print("inbox");
-                  List< dynamic> s=  await DengageFlutter.getInboxMessages(0, 10);
-                  print(s.toString());
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('token: $s'),
-                      action: SnackBarAction(
-                        label: 'copy token',
-                        onPressed: () {
-                          Clipboard.setData(new ClipboardData(text: s.toString()));
-                        },
-                      ),
-                    ),
-                  );
-                },
-                child: Text('Get & Show Token'),
-              ),
-            ),
-            Container(
-              padding: EdgeInsets.only(top: 10.0),
-              child: ElevatedButton(
-                onPressed: () async {
-                  Map data = new HashMap<String, dynamic>();
-                  data["name"] = "Kamran Younis";
-                  await DengageFlutter.setPartnerDeviceId("hasnainHaider");
-                },
-                child: Text('Send Device Event'),
-              ),
-            ),
-            Container(
-              padding: EdgeInsets.only(top: 10.0),
               child: InAppInline(
                 propertyId: "home_banner",
                 screenName: "MerchantStatusRoute",
                 timeout: Duration(seconds: 15),
                 builder: (status, inlineContent) {
+                  print('status: $status');
 
-                  if(status.isLoading){
-                    return CircularProgressIndicator();
+                  // Loaded
+                  if (status.isLoaded) {
+                    print('InAppInline loaded!');
+                    print('URL: ${status.webViewInfo?.url}');
+                    print('Title: ${status.webViewInfo?.title}');
+                    print(
+                        'Content Height: ${status.webViewInfo?.contentHeight}');
                   }
 
-                  if (status.isNotFound){
+                  // Content not found or error - hide completely
+                  if (status.isNotFound) {
+                    print('InAppInline content not found!');
                     return SizedBox.shrink();
                   }
-
-                  if (status.isError){
-                    return Text('Error: ${status.errorMessage}');
+                  if (status.isError) {
+                    print('InAppInline error: ${status.errorMessage}');
+                    return SizedBox.shrink();
                   }
-                  
-                  print('URL: ${status.webViewInfo?.url}');
-                  print('Title: ${status.webViewInfo?.title}');
-                  print('Content Height: ${status.webViewInfo?.contentHeight}');
-                  return SizedBox(
-                    child: inlineContent,
-                    height: 140,
-                    width: 200,
+                  return Offstage(
+                    offstage:
+                        status.isNotFound || status.isError || status.isLoading,
+                    child: SizedBox(height: 200, child: inlineContent),
+                  );
+                  // Loading or Loaded - show with fixed height
+                  return Stack(
+                    children: [
+                      SizedBox(
+                        height: 200,
+                        child: inlineContent,
+                      ),
+                      if (status.isLoading)
+                        SizedBox(
+                          height: 200,
+                          child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                    ],
                   );
                 },
               ),
             ),
+            Container(
+              padding: EdgeInsets.only(top: 10.0),
+              child: InAppInline(
+                propertyId: "404",
+                screenName: "MerchantStatusRoute",
+                timeout: Duration(seconds: 15),
+                builder: (status, inlineContent) {
+                  print('status: $status');
+                  
+                  // Loaded
+                  if (status.isLoaded) {
+                    print('InAppInline loaded!');
+                    print('URL: ${status.webViewInfo?.url}');
+                    print('Title: ${status.webViewInfo?.title}');
+                    print(
+                        'Content Height: ${status.webViewInfo?.contentHeight}');
+                  }
+
+                  // Content not found or error - hide completely
+                  if (status.isNotFound) {
+                    print('InAppInline content not found!');
+                    return SizedBox.shrink();
+                  }
+                  if (status.isError) {
+                    print('InAppInline error: ${status.errorMessage}');
+                    return SizedBox.shrink();
+                  }
+
+                  // Loading or Loaded - show with fixed height
+                  return Stack(
+                    children: [
+                      SizedBox(
+                        height: 200,
+                        child: inlineContent,
+                      ),
+                      if (status.isLoading)
+                        SizedBox(
+                          height: 200,
+                          child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+
+
             Container(
               padding: EdgeInsets.only(top: 10.0),
               child: ElevatedButton(

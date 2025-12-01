@@ -71,7 +71,7 @@ class InAppInline internal constructor(
         Log.d(TAG, "  - screenName: $screenName")
         Log.d(TAG, "  - customParams: $customParams")
         
-        // ÖNCE Dengage SDK'yı çağır
+        // FIRST call Dengage SDK
         Dengage.showInlineInApp(
             activity = activity,
             propertyId = propertyId,
@@ -81,7 +81,7 @@ class InAppInline internal constructor(
         )
         Log.d(TAG, "Dengage.showInlineInApp called")
         
-        // SONRA WebViewClient ve WebChromeClient'ı set et
+        // THEN set up WebViewClient and WebChromeClient
         mainHandler.postDelayed({
             setupWebViewClient()
             setupWebChromeClient()
@@ -89,10 +89,10 @@ class InAppInline internal constructor(
             isInitialized = true
             Log.d(TAG, "Initialization completed (delayed)")
             
-            // WebView durumunu logla
+            // Log WebView state
             logWebViewState()
             
-            // Eğer sayfa zaten yüklenmişse (progress 100%) direkt işle
+            // If page is already loaded (progress 100%), check content immediately
             if (inAppInlineElement.progress == 100) {
                 Log.d(TAG, "Page already loaded (progress 100%), checking content...")
                 checkContentAndNotify()
@@ -144,7 +144,7 @@ class InAppInline internal constructor(
     private fun setupWebViewClient() {
         Log.d(TAG, "Setting up WebViewClient")
         
-        // Mevcut WebViewClient'ı al ve wrap et
+        // Get existing WebViewClient and wrap it
         val existingClient = inAppInlineElement.webViewClient
         Log.d(TAG, "Existing WebViewClient: $existingClient")
         
@@ -218,7 +218,7 @@ class InAppInline internal constructor(
                         "errorCode" to errorCode,
                         "description" to description
                     ))
-                    Log.d(TAG, ">>> onReceivedError - Flutter'a onContentError gönderildi")
+                    Log.d(TAG, ">>> onReceivedError - onContentError sent to Flutter")
                 } catch (e: Exception) {
                     Log.e(TAG, ">>> onReceivedError - Flutter invoke error: ${e.message}")
                 }
@@ -320,16 +320,16 @@ class InAppInline internal constructor(
             val width = inAppInlineElement.width
             val height = inAppInlineElement.height
             
-            // Her layout değişikliğini loglamak yerine sadece önemli olanları logla
+            // Only log important layout changes instead of every change
             if (layoutChangeCount <= 5 || layoutChangeCount % 10 == 0) {
                 Log.d(TAG, ">>> onGlobalLayout #$layoutChangeCount - visibility: $visibilityStr, width: $width, height: $height")
                 Log.d(TAG, ">>> onGlobalLayout - isContentLoaded: $isContentLoaded, isNotFoundNotified: $isNotFoundNotified")
             }
             
-            // İçerik zaten yüklendiyse veya bildirilmişse kontrol etme
+            // Don't check if content is already loaded or notified
             if (isContentLoaded || isNotFoundNotified) return@OnGlobalLayoutListener
             
-            // View GONE yapıldıysa (SDK tarafından) bu içerik bulunamadı demektir
+            // If view is set to GONE (by SDK), it means content not found
             if (visibility == View.GONE) {
                 Log.d(TAG, ">>> onGlobalLayout - View is GONE, scheduling notFound check")
                 scheduleNotFoundCheck(500)
@@ -340,7 +340,7 @@ class InAppInline internal constructor(
     }
 
     private fun scheduleNotFoundCheck(delayMs: Long) {
-        // Önceki check'i iptal et
+        // Cancel previous check
         cancelNotFoundCheck()
         
         Log.d(TAG, "Scheduling notFound check in ${delayMs}ms")
@@ -384,7 +384,7 @@ class InAppInline internal constructor(
         
         try {
             methodChannel.invokeMethod("onContentNotFound", null)
-            Log.d(TAG, "Flutter'a onContentNotFound gönderildi")
+            Log.d(TAG, "onContentNotFound sent to Flutter")
         } catch (e: Exception) {
             Log.e(TAG, "Error invoking onContentNotFound: ${e.message}")
         }
@@ -421,7 +421,7 @@ class InAppInline internal constructor(
                         Log.d(TAG, "========== CONTENT LOADED ==========")
                         Log.d(TAG, "WebView info: $webViewInfo")
                         methodChannel.invokeMethod("onContentLoaded", webViewInfo)
-                        Log.d(TAG, "Flutter'a onContentLoaded gönderildi")
+                        Log.d(TAG, "onContentLoaded sent to Flutter")
                     } catch (e: Exception) {
                         Log.e(TAG, "Error invoking onContentLoaded: ${e.message}")
                     }

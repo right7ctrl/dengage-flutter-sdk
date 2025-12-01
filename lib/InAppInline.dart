@@ -5,24 +5,24 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// WebView bilgilerini içeren model sınıfı
+/// Model class containing WebView information
 class InAppInlineWebViewInfo {
-  /// Yüklenen URL
+  /// Loaded URL
   final String? url;
 
-  /// Sayfa başlığı
+  /// Page title
   final String? title;
 
-  /// İçerik yüksekliği (piksel)
+  /// Content height (pixels)
   final double? contentHeight;
 
-  /// İçerik genişliği (piksel)
+  /// Content width (pixels)
   final double? contentWidth;
 
-  /// Geri gidilebilir mi
+  /// Can go back
   final bool canGoBack;
 
-  /// İleri gidilebilir mi
+  /// Can go forward
   final bool canGoForward;
 
   const InAppInlineWebViewInfo({
@@ -54,30 +54,30 @@ class InAppInlineWebViewInfo {
   }
 }
 
-/// InAppInline yükleme durumu
+/// InAppInline loading state
 enum InAppInlineState {
-  /// Yükleniyor
+  /// Loading
   loading,
 
-  /// Başarıyla yüklendi
+  /// Successfully loaded
   loaded,
 
-  /// Hata oluştu
+  /// Error occurred
   error,
 
-  /// İçerik bulunamadı
+  /// Content not found
   notFound,
 }
 
-/// InAppInline durumunu içeren model
+/// Model containing InAppInline status
 class InAppInlineStatus {
-  /// Mevcut durum
+  /// Current state
   final InAppInlineState state;
 
-  /// WebView bilgileri (sadece loaded durumunda dolu)
+  /// WebView information (only filled when loaded)
   final InAppInlineWebViewInfo? webViewInfo;
 
-  /// Hata mesajı (sadece error durumunda dolu)
+  /// Error message (only filled when error)
   final String? errorMessage;
 
   const InAppInlineStatus({
@@ -86,16 +86,16 @@ class InAppInlineStatus {
     this.errorMessage,
   });
 
-  /// Yükleniyor mu?
+  /// Is it loading?
   bool get isLoading => state == InAppInlineState.loading;
 
-  /// Yüklendi mi?
+  /// Is it loaded?
   bool get isLoaded => state == InAppInlineState.loaded;
 
-  /// Hata var mı?
+  /// Is there an error?
   bool get isError => state == InAppInlineState.error;
 
-  /// İçerik bulunamadı mı?
+  /// Is content not found?
   bool get isNotFound => state == InAppInlineState.notFound;
 
   @override
@@ -104,26 +104,26 @@ class InAppInlineStatus {
   }
 }
 
-/// InAppInline builder callback tipi
+/// InAppInline builder callback type
 ///
-/// [status] - Mevcut yükleme durumu ve bilgileri
-/// [view] - WebView widget'ı (loaded durumunda bunu return et)
+/// [status] - Current loading state and information
+/// [view] - WebView widget (return this when loaded)
 typedef InAppInlineBuilder = Widget Function(
     InAppInlineStatus status, Widget view);
 
-/// InAppInline widget - WebView içeriği yüklenene kadar görünmez kalır
+/// InAppInline widget - Stays hidden until WebView content is loaded
 class InAppInline extends StatefulWidget {
   final String propertyId;
   final String? screenName;
   final HashMap<String, String>? customParams;
 
-  /// Durum değişikliklerinde çağrılan builder fonksiyonu
+  /// Builder function called on state changes
   ///
-  /// Bu fonksiyon her durum değişikliğinde çağrılır:
-  /// - `loading`: Yükleniyor - loading widget döndür
-  /// - `loaded`: Yüklendi - view'ı döndür
-  /// - `error`: Hata - hata widget'ı veya view döndür
-  /// - `notFound`: Bulunamadı - SizedBox.shrink() döndürerek gizle
+  /// This function is called on every state change:
+  /// - `loading`: Loading - return loading widget
+  /// - `loaded`: Loaded - return view
+  /// - `error`: Error - return error widget or view
+  /// - `notFound`: Not found - return SizedBox.shrink() to hide
   ///
   /// ```dart
   /// InAppInline(
@@ -131,14 +131,14 @@ class InAppInline extends StatefulWidget {
   ///   builder: (status, view) {
   ///     if (status.isLoading) return CircularProgressIndicator();
   ///     if (status.isNotFound) return SizedBox.shrink();
-  ///     if (status.isError) return Text('Hata: ${status.errorMessage}');
+  ///     if (status.isError) return Text('Error: ${status.errorMessage}');
   ///     return view; // WebView'ı göster
   ///   },
   /// )
   /// ```
   final InAppInlineBuilder builder;
 
-  /// İçerik yükleme timeout süresi (varsayılan: 10 saniye)
+  /// Content loading timeout duration (default: 10 seconds)
   final Duration timeout;
 
   const InAppInline({
@@ -160,12 +160,13 @@ class _InAppInlineState extends State<InAppInline> {
   MethodChannel? _channel;
   Timer? _timeoutTimer;
 
-  /// Mevcut durum
+  /// Current status
   InAppInlineStatus get status => _status;
 
   @override
   void initState() {
     super.initState();
+    print('[InAppInline] initState called - propertyId: ${widget.propertyId}');
     _startTimeoutTimer();
   }
 
@@ -177,8 +178,13 @@ class _InAppInlineState extends State<InAppInline> {
   }
 
   void _startTimeoutTimer() {
+    print('[InAppInline] Starting timeout timer: ${widget.timeout}');
     _timeoutTimer = Timer(widget.timeout, () {
+      print(
+          '[InAppInline] Timeout reached! mounted: $mounted, isLoading: ${_status.isLoading}');
       if (mounted && _status.isLoading) {
+        print(
+            '[InAppInline] Timeout: Content not loaded, setting status to notFound');
         _updateStatus(
             const InAppInlineStatus(state: InAppInlineState.notFound));
       }
@@ -193,12 +199,26 @@ class _InAppInlineState extends State<InAppInline> {
   }
 
   void _onPlatformViewCreated(int viewId) {
+    print('[InAppInline] onPlatformViewCreated called! viewId: $viewId');
+    print(
+        '[InAppInline] Setting up MethodChannel: plugins.dengage/inappinline_$viewId');
     _channel = MethodChannel('plugins.dengage/inappinline_$viewId');
     _channel?.setMethodCallHandler(_handleMethodCall);
+    print('[InAppInline] MethodChannel handler set successfully');
   }
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {
+    print('[InAppInline] Received method call from native: ${call.method}');
+    print('[InAppInline] Arguments: ${call.arguments}');
+    
     switch (call.method) {
+      case 'onDebugLog':
+        // Native debug logs
+        final message = call.arguments['message'] as String?;
+        if (message != null) {
+          print('[iOS Native] $message');
+        }
+        break;
       case 'onContentLoaded':
         _timeoutTimer?.cancel();
         if (mounted) {
@@ -239,8 +259,12 @@ class _InAppInlineState extends State<InAppInline> {
       };
 
   Widget _buildPlatformView() {
+    print('[InAppInline] _buildPlatformView called for $defaultTargetPlatform');
+    print('[InAppInline] creationParams: $_creationParams');
+    
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
+        print('[InAppInline] Creating AndroidView...');
         return AndroidView(
           viewType: 'plugins.dengage/inappinline',
           creationParams: _creationParams,
@@ -248,6 +272,7 @@ class _InAppInlineState extends State<InAppInline> {
           onPlatformViewCreated: _onPlatformViewCreated,
         );
       case TargetPlatform.iOS:
+        print('[InAppInline] Creating UiKitView...');
         return UiKitView(
           viewType: 'plugins.dengage/inappinline',
           creationParams: _creationParams,
@@ -262,16 +287,19 @@ class _InAppInlineState extends State<InAppInline> {
 
   @override
   Widget build(BuildContext context) {
-    // Platform view oluştur
+    print('[InAppInline] build called - status: ${_status.state}');
+
+    // Always build platform view (required for iOS UiKitView to initialize)
     final platformView = _buildPlatformView();
 
-    // Yükleme tamamlanana kadar görünmez tut
+    // Keep invisible until loaded (native side also animates alpha)
     final view = Opacity(
       opacity: _status.isLoaded ? 1.0 : 0.0,
       child: platformView,
     );
 
-    // Builder'ı çağır
+    // Call builder
+    print('[InAppInline] Calling builder with status: ${_status.state}');
     return widget.builder(_status, view);
   }
 }

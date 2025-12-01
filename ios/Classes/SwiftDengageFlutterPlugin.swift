@@ -12,7 +12,13 @@ public class SwiftDengageFlutterPlugin: NSObject, FlutterPlugin, FlutterStreamHa
     private var eventSink: FlutterEventSink?
 
     public static func register(with registrar: FlutterPluginRegistrar) {
-        registrar.register(InAppinlineFactory(messenger: registrar.messenger()), withId: "plugins.dengage/inappinline")
+        print("[DengageFlutterPlugin] ========== Plugin register called ==========")
+        print("[DengageFlutterPlugin] Creating InAppinlineFactory...")
+        let factory = InAppinlineFactory(messenger: registrar.messenger())
+        print("[DengageFlutterPlugin] Registering factory with ID: plugins.dengage/inappinline")
+        registrar.register(factory, withId: "plugins.dengage/inappinline")
+        print("[DengageFlutterPlugin] ========== InAppInline Factory Registered Successfully ==========")
+
 
         let channel = FlutterMethodChannel(name: "dengage_flutter", binaryMessenger: registrar.messenger())
         let instance = SwiftDengageFlutterPlugin()
