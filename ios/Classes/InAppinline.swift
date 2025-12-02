@@ -434,27 +434,75 @@ class InAppinline: NSObject, FlutterPlatformView {
         print("\(TAG) WebView frame: \(webView.frame)")
         print("\(TAG) Native view frame: \(_nativeWebView.frame)")
         
-        // Use native view dimensions (more reliable than JavaScript for Dengage content)
         let nativeFrame = _nativeWebView.frame
-        let contentHeight = Double(nativeFrame.height)
-        let contentWidth = Double(nativeFrame.width)
         
-        print("\(TAG) Using native dimensions - \(contentWidth) x \(contentHeight)")
-        
-        let webViewInfo: [String: Any?] = [
-            "url": webView.url?.absoluteString,
-            "title": webView.title,
-            "contentHeight": contentHeight,
-            "contentWidth": contentWidth,
-            "canGoBack": webView.canGoBack,
-            "canGoForward": webView.canGoForward
-        ]
-        
-        print("\(TAG) ========== CONTENT LOADED ==========")
-        print("\(TAG) WebView info: \(webViewInfo)")
-        
-        self.methodChannel.invokeMethod("onContentLoaded", arguments: webViewInfo)
-        print("\(TAG) onContentLoaded sent to Flutter")
+        // If native frame is valid, use it
+        if nativeFrame.width > 0 && nativeFrame.height > 0 {
+            let contentHeight = Double(nativeFrame.height)
+            let contentWidth = Double(nativeFrame.width)
+            
+            print("\(TAG) ✅ Using native frame dimensions - \(contentWidth) x \(contentHeight)")
+            
+            let webViewInfo: [String: Any?] = [
+                "url": webView.url?.absoluteString,
+                "title": webView.title,
+                "contentHeight": contentHeight,
+                "contentWidth": contentWidth,
+                "canGoBack": webView.canGoBack,
+                "canGoForward": webView.canGoForward
+            ]
+            
+            print("\(TAG) ========== CONTENT LOADED ==========")
+            print("\(TAG) WebView info: \(webViewInfo)")
+            
+            self.methodChannel.invokeMethod("onContentLoaded", arguments: webViewInfo)
+            print("\(TAG) onContentLoaded sent to Flutter")
+        } else {
+            // Fallback to JavaScript if native frame is 0
+            print("\(TAG) ⚠️ Native frame is 0x0, falling back to JavaScript")
+            
+            let script = """
+                (function() {
+                    var body = document.body;
+                    var html = document.documentElement;
+                    return {
+                        height: Math.max(body.scrollHeight || 0, body.offsetHeight || 0, html.scrollHeight || 0, html.offsetHeight || 0, 150),
+                        width: Math.max(body.scrollWidth || 0, body.offsetWidth || 0, html.scrollWidth || 0, html.offsetWidth || 0, 300)
+                    };
+                })();
+            """
+            
+            webView.evaluateJavaScript(script) { [weak self] result, error in
+                guard let self = self else { return }
+                
+                print("\(TAG) JavaScript result: \(String(describing: result))")
+                
+                var contentHeight: Double = 150.0 // Default fallback
+                var contentWidth: Double = 300.0  // Default fallback
+                
+                if let dimensions = result as? [String: Any] {
+                    contentHeight = dimensions["height"] as? Double ?? 150.0
+                    contentWidth = dimensions["width"] as? Double ?? 300.0
+                }
+                
+                print("\(TAG) Using JavaScript/fallback dimensions - \(contentWidth) x \(contentHeight)")
+                
+                let webViewInfo: [String: Any?] = [
+                    "url": webView.url?.absoluteString,
+                    "title": webView.title,
+                    "contentHeight": contentHeight,
+                    "contentWidth": contentWidth,
+                    "canGoBack": webView.canGoBack,
+                    "canGoForward": webView.canGoForward
+                ]
+                
+                print("\(TAG) ========== CONTENT LOADED ==========")
+                print("\(TAG) WebView info: \(webViewInfo)")
+                
+                self.methodChannel.invokeMethod("onContentLoaded", arguments: webViewInfo)
+                print("\(TAG) onContentLoaded sent to Flutter")
+            }
+        }
     }
     
     private func notifyContentError(error: Error?) {
