@@ -292,9 +292,11 @@ class _InAppInlineState extends State<InAppInline> {
     // Always build platform view (required for iOS UiKitView to initialize)
     final platformView = _buildPlatformView();
 
-    // Keep invisible until loaded (native side also animates alpha)
-    final view = Opacity(
+    // Animated fade-in when content is loaded
+    final view = AnimatedOpacity(
       opacity: _status.isLoaded ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
       child: platformView,
     );
 
